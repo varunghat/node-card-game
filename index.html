@@ -1,0 +1,290 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Card game test</title>
+    <style>
+      .card{        
+        position: absolute;
+        width:10%;       
+        top:60%;
+        opacity:100%;
+        -webkit-transition: all .2s ease-out;
+      	-moz-transition: all .2s ease-out;
+	      -o-transition: all .2s ease-out;
+	      transition: all .2s ease-out;
+      }
+    
+      .card:hover{
+        -moz-transform: scale(1.1);
+    	  -webkit-transform: scale(1.1);
+	      -o-transform: scale(1.1);
+     	  -ms-transform: scale(1.1);
+    	  transform: scale(1.1);
+      }
+
+      .selectedCard{
+        position: absolute;
+        width:10%;
+        transform:scale(1.1);       
+        top:60%;
+        
+      }
+
+      .unselectedCard{
+        position: absolute;
+        width:10%;             
+        top:60%;
+        opacity: 80%;
+      }     
+
+      .flip-card {
+        position:absolute;
+        background-color: transparent;
+        width: 10vw;
+        top:20%;
+        perspective: 1000px;
+      }
+
+      .flip-card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+        box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+      }
+
+      .flip-card-inner.is-flipped {
+        transform: rotateY(180deg);
+      }
+
+      .flip-card-front, .flip-card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+      }
+
+      .flip-card-front {
+        background-color: #bbb;
+        color: black;
+      }
+
+      .flip-card-back {
+        background-color: #2980b9;
+        color: white;
+        transform: rotateY(180deg);
+      }
+      .body
+      {
+        height:100vh;
+        background-color: #5cdbdb;
+        background-image: radial-gradient(#5cdbdb,#41a1ab);
+      }
+
+      .waittext{
+        text-align: center;
+        font-family:Impact, Charcoal, sans-serif;
+        font-size:500%;
+      }
+
+      .score
+      {
+        font-family:Impact, Charcoal, sans-serif;
+        font-size:500%;
+        position:absolute;
+        right:10%;
+      }
+
+    </style>
+  </head>
+  <script src="/socket.io/socket.io.js"></script>  
+    <script>
+        var socket = io();       
+        var selected=false;
+        var cardcolor="";
+        var prevcard="";
+        var score1=0,score2=0;
+        function cardClick(x)
+        {
+          if(selected==true)
+            return;
+          selected=true;
+          console.log(x.id);
+          prevcard=x.id[0];
+          socket.emit('cardSelect',x.id);
+          x.classList.remove(x.className);         
+
+          cards = document.getElementById(cardcolor + "cards").children;
+          for(i=0;i<cards.length;i++)
+          {
+            cards[i].classList.remove("card");
+            cards[i].classList.add("unselectedCard");
+          }
+          x.classList.remove("unselectedCard");
+          x.classList.add("selectedCard");
+          
+        }
+
+        function incrScore1()
+        {
+          score1++;
+          document.getElementById("scoretext1").innerHTML=score1.toString();
+        }
+
+        function incrScore2()
+        {
+          score2++;
+          document.getElementById("scoretext2").innerHTML=score2.toString();
+        }
+
+        socket.on("waiting",()=>{
+            //waiting for player
+            console.log("Waiting for player");
+            cardcolor="b";
+        });
+
+        socket.on("user_left",()=>{
+          document.getElementById("waittext").innerHTML="Opponent disconnected. Waiting for players...";
+          score1=score2=-1;
+          incrScore1();
+          incrScore2();
+        });
+        socket.on("begin",()=>{
+          //start game
+          console.log("Begin");
+          if(cardcolor=="")
+            cardcolor="r";
+          document.getElementById(cardcolor + "cards").style.visibility="visible";
+          document.getElementById("scoretext1").style.visibility="visible";
+          document.getElementById("scoretext2").style.visibility="visible";
+          resetCards();         
+        });
+
+        socket.on("red",(c1,c2)=>{
+          console.log("red wins");  
+          var c="";        
+          document.getElementById("waittext").innerHTML="Red wins!";
+          if(prevcard==c1)
+            c=c2;
+          else
+            c=c1;
+          c = c.toUpperCase();
+          var card = document.getElementById( c + "B");
+          var suit = cardcolor=="r"?"C":"H";          
+          document.getElementById(c + "Bimg").src = "/card_imgs/"+c+suit+".png";   
+          card.classList.toggle("is-flipped");
+
+          cardcolor=="r"?incrScore2():incrScore1();
+
+
+          setTimeout(resetCards,2000);
+          setTimeout(flipback,2000,c);
+        })
+
+        socket.on("black",(c1,c2)=>{
+          console.log("Black wins");   
+          var c="";         
+          document.getElementById("waittext").innerHTML="Black wins!";
+          if(prevcard==c1)
+            c=c2;
+          else
+            c=c1;
+          var card = document.getElementById( c + "B");
+          var suit = cardcolor=="r"?"C":"H";          
+          document.getElementById(c + "Bimg").src = "/card_imgs/"+c+suit+".png";   
+          card.classList.toggle("is-flipped");
+          
+          cardcolor=="b"?incrScore2():incrScore1();
+          
+          setTimeout(resetCards,2000);
+          setTimeout(flipback,2000,c);
+          
+        })
+
+        function flipback(c)
+        {
+            var card = document.getElementById( c + "B");
+            console.log(c);
+            card.classList.toggle("is-flipped");
+        }
+        function resetCards()        
+        {        
+          console.log("reset");         
+          selected=false;          
+          cards = document.getElementById(cardcolor + "cards").children;
+          for(i=0;i<cards.length;i++)
+          {
+            cards[i].classList.remove(cards[i].className);
+            cards[i].classList.add("card");           
+          }
+          document.getElementById("waittext").innerHTML="Round started! Pick a card";          
+        }
+              
+
+    </script>
+  <body class="body">
+    <div>
+      <p id="waittext" class="waittext">Welcome! Waiting for players</p>
+      <p id="scoretext1" class="score" style="top:30%;visibility:hidden;">0</p>
+      <p id="scoretext2" class="score" style="top:60%;visibility:hidden;">0</p>
+
+      <div id="bcards" style="visibility: hidden;">
+        <img src="/card_imgs/KC.png" class="card" style="left:30%" onclick="cardClick(this)" id="KC">
+        <img src="/card_imgs/AC.png" class="card" style="left:40%" onclick="cardClick(this)" id="AC">
+        <img src="/card_imgs/2C.png" class="card" style="left:50%" onclick="cardClick(this)" id="2C">
+        <img src="/card_imgs/3C.png" class="card" style="left:60%" onclick="cardClick(this)" id="3C">
+      </div>
+      <div id="rcards" style="visibility: hidden;">
+        <img src="/card_imgs/KH.png" class="card" style="left:30%" onclick="cardClick(this)" id="KH">
+        <img src="/card_imgs/AH.png" class="card" style="left:40%" onclick="cardClick(this)" id="AH">
+        <img src="/card_imgs/2H.png" class="card" style="left:50%" onclick="cardClick(this)" id="2H">
+        <img src="/card_imgs/3H.png" class="card" style="left:60%" onclick="cardClick(this)" id="3H">
+      </div>
+
+      <div class="flip-card" style="left:30%">
+        <div class="flip-card-inner" id="KB" >
+          <div class="flip-card-front">
+            <img src="/card_imgs/purple_back.png" alt="Avatar" style="width:10vw;">
+          </div>
+          <div class="flip-card-back">
+            <img src="/card_imgs/purple_back.png" style="width:10vw;" id="KBimg">
+          </div>
+        </div>  
+      </div>
+      <div class="flip-card" style="left:40%">
+        <div class="flip-card-inner" id="AB" >
+          <div class="flip-card-front">
+            <img src="/card_imgs/purple_back.png" alt="Avatar" style="width:10vw;">
+          </div>
+          <div class="flip-card-back">
+            <img src="/card_imgs/purple_back.png" style="width:10vw;" id="ABimg">
+          </div>
+        </div>  
+      </div>
+      <div class="flip-card" style="left:50%">
+        <div class="flip-card-inner" id="2B" >
+          <div class="flip-card-front">
+            <img src="/card_imgs/purple_back.png" alt="Avatar" style="width:10vw;">
+          </div>
+          <div class="flip-card-back">
+            <img src="/card_imgs/purple_back.png" style="width:10vw;" id="2Bimg">
+          </div>
+        </div>  
+      </div>
+      <div class="flip-card" style="left:60%">
+        <div class="flip-card-inner" id="3B" >
+          <div class="flip-card-front">
+            <img src="/card_imgs/purple_back.png" alt="Avatar" style="width:10vw;">
+          </div>
+          <div class="flip-card-back">
+            <img src="/card_imgs/purple_back.png" style="width:10vw;" id="3Bimg">
+          </div>
+        </div>  
+      </div>
+   
+    </div>
+  </body>
+</html>

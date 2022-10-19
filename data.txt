@@ -1,0 +1,5 @@
+AC,2H,r
+KH,2C,b
+2H,AC,r
+3C,AH,r
+3H,KC,b
